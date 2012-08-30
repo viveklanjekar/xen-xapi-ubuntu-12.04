@@ -51,7 +51,7 @@ if ! grep -q "GRUB_CMDLINE_XEN" /etc/default/grub; then
 	fi
 elif ! grep -q "GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 \"" /etc/default/grub ; then
 	touch $reboot_required_file
-	if  sed -i 's/GRUB_CMDLINE_XEN=.*\+/GRUB_CMDLINE_XEN="dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 "/' /etc/default/grub  ; then
+	if  sed -i "s/GRUB_CMDLINE_XEN=.*\+/GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 \"/" /etc/default/grub  ; then
 		touch $reboot_required_file
 	else
 		log "FATAL: failed to set dom0 memory and vcpu"
