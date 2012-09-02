@@ -11,6 +11,7 @@ function log()
 	echo -e "$(date +%b\ %d\ %H:%M:%S) $(hostname -s) xen-setup: $@"
 }
 
+# install xen-hypervisor if it is not installed
 if !  dpkg --get-selections | grep  -i xen-hypervisor &> /dev/null ; then
 	log "Xen Hypervisor not found - attempting to install Xen"
 	if  apt-get -y install xen-hypervisor &> /dev/null ; then
@@ -21,6 +22,7 @@ if !  dpkg --get-selections | grep  -i xen-hypervisor &> /dev/null ; then
 	fi
 fi
 
+# set GRUB_DEFAULT="Xen 4.1-amd64"
 if ! grep -q "GRUB_DEFAULT=\"Xen 4.1-amd64\"" /etc/default/grub;  then
 	log "Setting Xen as default boot entry"
 	if sed -i 's/GRUB_DEFAULT=.*\+/GRUB_DEFAULT="Xen 4.1-amd64"/' /etc/default/grub; then
@@ -31,6 +33,7 @@ if ! grep -q "GRUB_DEFAULT=\"Xen 4.1-amd64\"" /etc/default/grub;  then
 	fi
 fi
 
+# set GRUB_CMDLINE_LINUX="apparmor=0"
 if ! grep -q "GRUB_CMDLINE_LINUX=\"apparmor=0\"" /etc/default/grub; then
 	log "Disabling Apparomor"
 	if sed -i 's/GRUB_CMDLINE_LINUX=.*\+/GRUB_CMDLINE_LINUX="apparmor=0"/' /etc/default/grub; then
@@ -41,24 +44,27 @@ if ! grep -q "GRUB_CMDLINE_LINUX=\"apparmor=0\"" /etc/default/grub; then
 	fi
 fi
 
+# if GRUB_CMDLINE_XEN does not exist then add the line 
 if ! grep -q "GRUB_CMDLINE_XEN" /etc/default/grub; then
 	log "Setting dom0 memory and vcpu"
-	if  sed -i "/GRUB_CMDLINE_LINUX=\"apparmor=0\"/ a\GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 \"" /etc/default/grub  ; then
+	if  sed -i "/GRUB_CMDLINE_LINUX=\"apparmor=0\"/ a\GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=${dom0_max_vcpus} \"" /etc/default/grub  ; then
 		touch $reboot_required_file
 	else 
 		log "FATAL: failed to set dom0 memory and vcpu"
 		exit 1
 	fi
-elif ! grep -q "GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 \"" /etc/default/grub ; then
+# if GRUB_CMDLINE_XEN exists then set it to GRUB_CMDLINE_XEN="dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=${dom0_max_vcpus}"
+elif ! grep -q "GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=${dom0_max_vcpus} \"" /etc/default/grub ; then
 	touch $reboot_required_file
-	if  sed -i "s/GRUB_CMDLINE_XEN=.*\+/GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=2 \"/" /etc/default/grub  ; then
+	if  sed -i "s/GRUB_CMDLINE_XEN=.*\+/GRUB_CMDLINE_XEN=\"dom0_mem=${dom0_mem},max:${dom0_mem} dom0_max_vcpus=${dom0_max_vcpus} \"/" /etc/default/grub  ; then
 		touch $reboot_required_file
 	else
 		log "FATAL: failed to set dom0 memory and vcpu"
 		exit 1
 	fi
 fi
-	
+
+# if file $reboot_required_file exist then update GRUB since something has change and reboot
 if [ -e $reboot_required_file ] ; then
 	log "Updating GRUB"
 	if ! update-grub &> /dev/null; then
